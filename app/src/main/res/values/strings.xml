@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Home Control</string>
+    <string name="key_service_description">Opens and closes the Home Control panel from one remote button. Every other key passes through untouched.</string>
+</resources>

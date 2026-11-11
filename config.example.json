@@ -1,0 +1,9 @@
+{
+  "url": "http://192.168.100.X:8123",
+  "token": "PASTE_LONG_LIVED_TOKEN_OF_THE_tv_USER",
+  "key": "",
+  "log_keys": true,
+  "entities": [
+    { "id": "light.bedroom_2_light", "name": "Bedroom" }
+  ]
+}

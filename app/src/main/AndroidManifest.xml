@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Cleartext is allowed so http://<ha-ip>:8123 works on the LAN. Use https:// in config.json if you can. -->
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/ic_panel"
+        android:icon="@drawable/ic_panel"
+        android:label="@string/app_name"
+        android:theme="@style/Panel"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".PanelActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- Glass TV module card: see docs/modules.md in the glass-tv repo. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="com.gathin.tvhome.category.DOCK_CARD" />
+            </intent-filter>
+            <meta-data
+                android:name="com.gathin.tvhome.card"
+                android:resource="@xml/module_card" />
+        </activity>
+
+        <!-- Optional: a remote button opens/closes the panel from anywhere. Opt-in via ha.sh key-on. -->
+        <service
+            android:name=".KeyService"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/key_service" />
+        </service>
+    </application>
+</manifest>
