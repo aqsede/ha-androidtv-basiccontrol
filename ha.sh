@@ -33,8 +33,7 @@ case "${1:-}" in
     [ -f "$f" ] || { echo "no $f (copy config.example.json to config.json and edit it)"; exit 1; }
     python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$f" 2>/dev/null \
       || { echo "$f is not valid JSON"; exit 1; }
-    adb shell "mkdir -p /sdcard/Android/data/$PKG/files"
-    adb push "$f" "/sdcard/Android/data/$PKG/files/config.json"
+    adb shell "run-as $PKG sh -c 'mkdir -p files && cat > files/config.json'" < "$f"
     echo "Config pushed. Reopen the panel to load it."
     ;;
   open)

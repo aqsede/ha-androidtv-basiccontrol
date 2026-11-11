@@ -67,9 +67,7 @@ final class PanelConfig {
     }
 
     static File file(Context c) {
-        File dir = c.getExternalFilesDir(null);
-        if (dir == null) dir = c.getFilesDir();
-        return new File(dir, "config.json");
+        return new File(c.getFilesDir(), "config.json");
     }
 
     static PanelConfig load(Context c) {
