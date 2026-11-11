@@ -36,7 +36,6 @@ public class PanelActivity extends Activity {
     /** The open panel, so KeyService can close it with the same button that opened it. */
     static PanelActivity current;
 
-    private static final int COLS = 4;
     private static final long POLL_MS = 5000;
 
     private static final int GREY = 0xFFB0B7BE;
@@ -128,22 +127,31 @@ public class PanelActivity extends Activity {
             col.addView(scroll, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
-            List<PanelConfig.Item> items = cfg.items;
-            for (int i = 0; i < items.size(); i += COLS) {
-                LinearLayout row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                for (int j = 0; j < COLS; j++) {
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(104), 1f);
-                    lp.setMargins(dp(8), dp(8), dp(8), dp(8));
-                    if (i + j < items.size()) {
-                        Tile t = new Tile(items.get(i + j));
-                        tiles.add(t);
-                        row.addView(t, lp);
-                    } else {
-                        row.addView(new View(this), lp); // keeps the last row's tiles the same width
-                    }
+            final int cols = cfg.columns;
+            for (PanelConfig.Group group : cfg.groups) {
+                if (!group.room.isEmpty()) {
+                    TextView heading = text(group.room, 18, 0xFFE6E9EC, true);
+                    heading.setLetterSpacing(0.04f);
+                    heading.setPadding(dp(10), dp(rows.getChildCount() == 0 ? 0 : 18), dp(10), dp(2));
+                    rows.addView(heading);
                 }
-                rows.addView(row);
+                List<PanelConfig.Item> items = group.items;
+                for (int i = 0; i < items.size(); i += cols) {
+                    LinearLayout row = new LinearLayout(this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    for (int j = 0; j < cols; j++) {
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(104), 1f);
+                        lp.setMargins(dp(8), dp(8), dp(8), dp(8));
+                        if (i + j < items.size()) {
+                            Tile t = new Tile(items.get(i + j));
+                            tiles.add(t);
+                            row.addView(t, lp);
+                        } else {
+                            row.addView(new View(this), lp); // keeps the last row's tiles the same width
+                        }
+                    }
+                    rows.addView(row);
+                }
             }
             if (!tiles.isEmpty()) tiles.get(0).requestFocus();
         }

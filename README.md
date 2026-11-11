@@ -22,7 +22,8 @@ when it closes, nothing is running. The only permission is INTERNET. Debug build
 | --- | --- |
 | `url` | `http://<ha-ip>:8123` or an `https://` address |
 | `token` | long-lived access token of a dedicated non-admin `tv` user |
-| `entities` | list of `"light.x"` or `{"id": "light.x", "name": "Bedroom"}`. Without a name, HA's friendly_name is used |
+| `entities` | list of rooms `{"room": "Living Room", "entities": [...]}`; each entity is `"light.x"` or `{"id": "light.x", "name": "Left"}` (no name: HA's friendly_name). Entities outside any room show without a heading |
+| `columns` | tiles per row, 2 to 6, default 4 |
 | `key` | optional remote button, e.g. `"KEYCODE_PROG_RED"` or a number |
 | `log_keys` | `true` to log key names while you look for a usable button |
 

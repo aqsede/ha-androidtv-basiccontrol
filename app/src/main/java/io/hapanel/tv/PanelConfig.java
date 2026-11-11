@@ -16,15 +16,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * config.json in the app's external files directory
- * (/sdcard/Android/data/io.hapanel.tv/files/config.json), pushed over adb with ./ha.sh config.
+ * config.json in the app's private files directory, written by ./ha.sh config (through run-as).
  *
  * {
  *   "url": "http://192.168.1.20:8123",
  *   "token": "long-lived access token",
- *   "key": "KEYCODE_PROG_RED",          optional: remote button that opens/closes the panel
- *   "log_keys": false,                  optional: log every key name to logcat (tag HaPanel) to find a key
- *   "entities": [ {"id": "light.x", "name": "Bedroom"}, "switch.y" ]
+ *   "columns": 4,                        optional, 2 to 6, default 4
+ *   "key": "KEYCODE_PROG_RED",           optional: remote button for the key service
+ *   "log_keys": false,                   optional: log key names to logcat (tag HaPanel)
+ *   "entities": [
+ *     { "room": "Living Room", "entities": [ {"id": "light.x", "name": "Left"}, "fan.y" ] },
+ *     { "room": "Bedroom",     "entities": [ ... ] },
+ *     "switch.loose_one"                  entities outside a room are allowed, without heading
+ *   ]
  * }
  */
 final class PanelConfig {
@@ -49,20 +53,33 @@ final class PanelConfig {
         }
     }
 
+    /** A room: a heading and its tiles. An empty room name means no heading. */
+    static final class Group {
+        final String room;
+        final List<Item> items = new ArrayList<>();
+
+        Group(String room) {
+            this.room = room;
+        }
+    }
+
     final String url;
     final String token;
     final int key;
     final boolean logKeys;
-    final List<Item> items;
+    final int columns;
+    final List<Group> groups;
     /** Non-null when the panel cannot work; shown on screen instead of tiles. */
     final String error;
 
-    private PanelConfig(String url, String token, int key, boolean logKeys, List<Item> items, String error) {
+    private PanelConfig(String url, String token, int key, boolean logKeys, int columns,
+                        List<Group> groups, String error) {
         this.url = url;
         this.token = token;
         this.key = key;
         this.logKeys = logKeys;
-        this.items = items;
+        this.columns = columns;
+        this.groups = groups;
         this.error = error;
     }
 
@@ -72,13 +89,14 @@ final class PanelConfig {
 
     static PanelConfig load(Context c) {
         File f = file(c);
-        List<Item> items = new ArrayList<>();
+        List<Group> groups = new ArrayList<>();
         if (!f.isFile()) {
-            return new PanelConfig("", "", KeyEvent.KEYCODE_UNKNOWN, false, items,
-                    "No config.json yet.\nPush it with ./ha.sh config config.json\n(" + f.getAbsolutePath() + ")");
+            return new PanelConfig("", "", KeyEvent.KEYCODE_UNKNOWN, false, 4, groups,
+                    "No config.json yet.\nPush it with ./ha.sh config config.json");
         }
         int key = KeyEvent.KEYCODE_UNKNOWN;
         boolean logKeys = false;
+        int columns = 4;
         try {
             JSONObject j = new JSONObject(read(f));
             Object k = j.opt("key");
@@ -88,42 +106,74 @@ final class PanelConfig {
                 key = KeyEvent.keyCodeFromString(((String) k).trim());
             }
             logKeys = j.optBoolean("log_keys", false);
+            columns = Math.max(2, Math.min(6, j.optInt("columns", 4)));
 
             String url = j.optString("url", "").trim();
             String token = j.optString("token", "").trim();
             if (url.isEmpty() || token.isEmpty()) {
-                return new PanelConfig(url, token, key, logKeys, items, "config.json needs \"url\" and \"token\".");
+                return new PanelConfig(url, token, key, logKeys, columns, groups,
+                        "config.json needs \"url\" and \"token\".");
             }
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                return new PanelConfig(url, token, key, logKeys, items, "\"url\" must start with http:// or https://");
+                return new PanelConfig(url, token, key, logKeys, columns, groups,
+                        "\"url\" must start with http:// or https://");
             }
 
             StringBuilder skipped = new StringBuilder();
             JSONArray arr = j.optJSONArray("entities");
+            Group loose = null; // collects entities listed outside any room
             if (arr != null) {
                 for (int i = 0; i < arr.length(); i++) {
                     Object o = arr.opt(i);
-                    String id = "";
-                    String name = "";
-                    if (o instanceof String) {
-                        id = ((String) o).trim();
-                    } else if (o instanceof JSONObject) {
-                        id = ((JSONObject) o).optString("id", "").trim();
-                        name = ((JSONObject) o).optString("name", "").trim();
+                    if (o instanceof JSONObject && ((JSONObject) o).has("entities")) {
+                        JSONObject g = (JSONObject) o;
+                        Group grp = new Group(g.optString("room", g.optString("name", "")).trim());
+                        JSONArray inner = g.optJSONArray("entities");
+                        if (inner != null) {
+                            for (int n = 0; n < inner.length(); n++) {
+                                Item it = parseItem(inner.opt(n), skipped);
+                                if (it != null) grp.items.add(it);
+                            }
+                        }
+                        if (!grp.items.isEmpty()) groups.add(grp);
+                        loose = null;
+                    } else {
+                        Item it = parseItem(o, skipped);
+                        if (it != null) {
+                            if (loose == null) {
+                                loose = new Group("");
+                                groups.add(loose);
+                            }
+                            loose.items.add(it);
+                        }
                     }
-                    if (validId(id)) items.add(new Item(id, name));
-                    else skipped.append(' ').append(id.isEmpty() ? "(empty)" : id);
                 }
             }
-            if (items.isEmpty()) {
+            if (groups.isEmpty()) {
                 String msg = "config.json has no valid \"entities\".";
                 if (skipped.length() > 0) msg += " Skipped:" + skipped;
-                return new PanelConfig(url, token, key, logKeys, items, msg);
+                return new PanelConfig(url, token, key, logKeys, columns, groups, msg);
             }
-            return new PanelConfig(url, token, key, logKeys, items, null);
+            return new PanelConfig(url, token, key, logKeys, columns, groups, null);
         } catch (Exception e) {
-            return new PanelConfig("", "", key, logKeys, items, "config.json is not valid JSON: " + e.getMessage());
+            return new PanelConfig("", "", key, logKeys, columns, new ArrayList<Group>(),
+                    "config.json is not valid JSON: " + e.getMessage());
         }
+    }
+
+    /** One entity: "light.x" or {"id": "light.x", "name": "Label"}; null (and noted) when the id is invalid. */
+    private static Item parseItem(Object o, StringBuilder skipped) {
+        String id = "";
+        String name = "";
+        if (o instanceof String) {
+            id = ((String) o).trim();
+        } else if (o instanceof JSONObject) {
+            id = ((JSONObject) o).optString("id", "").trim();
+            name = ((JSONObject) o).optString("name", "").trim();
+        }
+        if (validId(id)) return new Item(id, name);
+        skipped.append(' ').append(id.isEmpty() ? "(empty)" : id);
+        return null;
     }
 
     /** Entity ids look like domain.object_id: lower-case letters, digits, underscore, one dot. */
