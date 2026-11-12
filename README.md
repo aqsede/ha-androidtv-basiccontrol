@@ -17,15 +17,23 @@ Tiles are grouped under room headings.
 
 ## Build and install
 
+Point the shell at your JDK and Android SDK first (adjust the paths to where you installed them).
+Put these lines in a file such as `~/android-env.sh` and `source` it, or in your shell profile:
+
+    export JAVA_HOME="$HOME/jdk17"
+    export ANDROID_HOME="$HOME/Android/Sdk"
+    export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+Then:
+
     export TV_HOST=<tv-ip>               # required; port defaults to 5555 (TV_PORT to change)
-    # make sure JAVA_HOME and ANDROID_HOME point at your JDK 17 and Android SDK
     ./ha.sh install
     cp config.example.json config.json   # edit url, token, entities
     ./ha.sh config config.json
     ./ha.sh open
 
-`ha.sh` runs `adb` from your PATH, or set `ADB=/path/to/adb`. To load an environment file first, set
-`HA_ENV=/path/to/file.sh`. Run `./ha.sh` with no argument for the list of commands.
+`ha.sh` runs `adb` from your PATH, or set `ADB=/path/to/adb`. To have it load the environment file
+above for you, set `HA_ENV=~/android-env.sh`. Run `./ha.sh` with no argument for the list of commands.
 
 ## config.json
 
