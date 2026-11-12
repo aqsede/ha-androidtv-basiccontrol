@@ -1,12 +1,19 @@
 {
-  "url": "http://192.168.100.X:8123",
-  "token": "PASTE_LONG_LIVED_TOKEN_OF_THE_tv_USER",
+  "url": "http://192.168.1.50:8123",
+  "token": "PASTE_LONG_LIVED_ACCESS_TOKEN",
   "columns": 4,
   "entities": [
     {
+      "room": "Living Room",
+      "entities": [
+        { "id": "light.living_room_ceiling", "name": "Ceiling" }
+      ]
+    },
+    {
       "room": "Bedroom",
       "entities": [
-        { "id": "light.bedroom_2_light", "name": "Light" }
+        { "id": "light.bedroom_light", "name": "Light" },
+        { "id": "fan.bedroom_fan", "name": "Fan" }
       ]
     }
   ]

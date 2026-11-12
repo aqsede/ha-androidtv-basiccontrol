@@ -23,7 +23,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-            <!-- Glass TV module card: see docs/modules.md in the glass-tv repo. -->
+            <!-- Optional: dock card for the Glass TV launcher (ignored by other launchers). -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="com.gathin.tvhome.category.DOCK_CARD" />

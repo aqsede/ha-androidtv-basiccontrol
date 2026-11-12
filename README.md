@@ -1,44 +1,84 @@
-# Home Control (Home Assistant panel for Glass TV)
+# Home Control
 
-A small Android TV app. It adds a "Home Control" card to the Glass TV dock; opening it shows a
-full-screen panel of your Home Assistant entities. D-pad moves, OK toggles, Back closes. Optionally one
-remote button opens and closes the panel from any app.
+A small Android TV / Google TV app that shows your Home Assistant entities as a full-screen panel of
+tiles, driven by the remote. D-pad moves, OK toggles (or runs a scene or script), Back closes.
+Tiles are grouped under room headings.
 
-Nothing runs in the background. While the panel is open it asks HA for each entity every 5 seconds;
-when it closes, nothing is running. The only permission is INTERNET. Debug build, sideloaded.
+- No dependencies: plain Android views, `HttpURLConnection` and `org.json`. Only permission: INTERNET.
+- Nothing runs in the background. While the panel is open it reads each entity every 5 seconds from
+  Home Assistant's REST API; when it closes, nothing is running.
+- Sideloaded debug build, tested on a Xiaomi Mi TV Stick 4K (Google TV, Android 11).
 
-## Build and install (Steam Deck, same toolchain as Glass TV)
+## Requirements
 
-    export TV_HOST=192.168.100.14        # default already set in ha.sh
+- Android TV / Google TV device on your network with network (ADB) debugging on, minSdk 26 (Android 8+)
+- On the computer: JDK 17, Android SDK (platform 34, build-tools 34, platform-tools), `python3`, `adb`
+- A Home Assistant user for the TV (non-admin is recommended) and a long-lived access token for it
+
+## Build and install
+
+    export TV_HOST=<tv-ip>               # required; port defaults to 5555 (TV_PORT to change)
+    # make sure JAVA_HOME and ANDROID_HOME point at your JDK 17 and Android SDK
     ./ha.sh install
     cp config.example.json config.json   # edit url, token, entities
     ./ha.sh config config.json
     ./ha.sh open
-    adb shell input keyevent KEYCODE_HOME   # press Home: approve the "Home Control" card prompt once
+
+`ha.sh` runs `adb` from your PATH, or set `ADB=/path/to/adb`. To load an environment file first, set
+`HA_ENV=/path/to/file.sh`. Run `./ha.sh` with no argument for the list of commands.
 
 ## config.json
 
+    {
+      "url": "http://<ha-ip>:8123",
+      "token": "long-lived access token",
+      "columns": 4,
+      "entities": [
+        { "room": "Living Room", "entities": [
+            { "id": "light.left", "name": "Left Light" },
+            "fan.ceiling"
+        ] },
+        { "room": "Bedroom", "entities": [ "light.bed_main" ] }
+      ]
+    }
+
 | key | meaning |
 | --- | --- |
-| `url` | `http://<ha-ip>:8123` or an `https://` address |
-| `token` | long-lived access token of a dedicated non-admin `tv` user |
-| `entities` | list of rooms `{"room": "Living Room", "entities": [...]}`; each entity is `"light.x"` or `{"id": "light.x", "name": "Left"}` (no name: HA's friendly_name). Entities outside any room show without a heading |
+| `url` | `http://<ha-ip>:8123`, or an `https://` address |
+| `token` | long-lived access token |
+| `entities` | rooms `{"room": ..., "entities": [...]}`; each entity is `"light.x"` or `{"id": "light.x", "name": "Label"}` (no name: Home Assistant's friendly_name). Entities listed outside a room show without a heading |
 | `columns` | tiles per row, 2 to 6, default 4 |
-| `key` | optional remote button, e.g. `"KEYCODE_PROG_RED"` or a number |
-| `log_keys` | `true` to log key names while you look for a usable button |
+| `key` | optional remote button for the built-in key service (see below) |
+| `log_keys` | `true` to log key names to logcat (tag `HaPanel`) while looking for a usable button |
 
-Lights, switches, fans, input_booleans, covers and similar toggle. Scenes and scripts run. Buttons press.
-Locks and media players are not handled in v1.
+Lights, switches, fans, input_booleans, covers and similar toggle. Scenes and scripts run. Buttons
+press. Locks and media players are not handled yet.
 
-## Remote button (optional)
+The file is stored in the app's private storage and written through `run-as`, which works because the
+build is a debug build. `./ha.sh config` validates the JSON before pushing it.
 
-    ./ha.sh key-on
-    # set "log_keys": true, push config, then:
-    ./ha.sh keys          # press the extra buttons on your remote; note the names that appear
-    # put the name in "key", set log_keys back to false, push config again
+## Opening the panel from the remote
 
-Buttons the TV's system keeps for itself (Home, Assistant, power) never reach apps; pick one that shows
-up in `./ha.sh keys`. Reinstalling resets the service: run `./ha.sh key-on` again.
+Two ways, pick one:
+
+1. **A launcher/remote-mapping app.** The app is a normal launchable app named "Home Control", so any
+   remote-button mapper (for example tvQuick Actions) can launch it from a button.
+2. **Built-in key service (optional, off by default).**
+
+       ./ha.sh key-on
+       # set "log_keys": true in config.json, push it, then:
+       ./ha.sh keys          # press your remote's extra buttons; note the names that appear
+       # put a name in "key", set log_keys back to false, push again
+
+   It is an accessibility service that only consumes the one key you name; every other key passes
+   through untouched. Buttons the system keeps for itself (Home, Assistant, power) never reach apps.
+   Reinstalling resets it: run `./ha.sh key-on` again. Turn it off with `./ha.sh key-off`.
+
+## Optional: Glass TV launcher card
+
+The app also declares a module card for the [Glass TV](https://github.com/cocombee/glass-tv) launcher.
+On that launcher, after you approve the prompt once, Home Control appears as a dock tile with an amber
+glow. On any other launcher the declaration is ignored and the app behaves as a regular app.
 
 ## Remove
 
@@ -46,6 +86,8 @@ up in `./ha.sh keys`. Reinstalling resets the service: run `./ha.sh key-on` agai
 
 ## Security notes
 
-- The token lives in config.json on the TV (app storage, not readable by other normal apps). Use a
-  non-admin HA user, and revoke the token in HA if the TV is lost.
-- `http://` sends the token unencrypted on your LAN. Use `https://` if you can.
+- The token lives in `config.json` on the TV (private app storage). Use a dedicated non-admin Home
+  Assistant user and revoke the token if the TV is lost.
+- `http://` sends the token unencrypted on your LAN; use `https://` where you can.
+- Never commit `config.json` (it is in `.gitignore`). If a token was ever committed, revoke it in Home
+  Assistant.

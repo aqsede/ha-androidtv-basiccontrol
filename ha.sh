@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Home Control helper. Usage:
+# Home Control helper. Needs TV_HOST (TV IP); optional TV_PORT, ADB, HA_ENV (a file to source). Usage:
 #   ./ha.sh install        build the APK and install it on the TV
 #   ./ha.sh config [file]  push config.json (default ./config.json) to the app
 #   ./ha.sh open           open the panel now
@@ -7,14 +7,14 @@
 #   ./ha.sh key-on         enable the remote-button service (opt-in)
 #   ./ha.sh key-off        disable it again
 #   ./ha.sh remove         disable the service and uninstall the app
-[ -f "$HOME/glass-tv-env.sh" ] && source "$HOME/glass-tv-env.sh"
+[ -n "${HA_ENV:-}" ] && [ -f "$HA_ENV" ] && source "$HA_ENV"
 set -euo pipefail
 cd "$(dirname "$0")"
 
 PKG=io.hapanel.tv
 SVC="$PKG/$PKG.KeyService"
-: "${TV_HOST:=192.168.100.14}"
-ADB_BIN="${ADB:-$HOME/platform-tools/adb}"
+: "${TV_HOST:?set TV_HOST to the TV IP address, e.g. export TV_HOST=192.168.1.50}"
+ADB_BIN="${ADB:-$(command -v adb || echo "$HOME/platform-tools/adb")}"
 SERIAL="$TV_HOST:${TV_PORT:-5555}"
 adb() { "$ADB_BIN" -s "$SERIAL" "$@"; }
 "$ADB_BIN" connect "$SERIAL" >/dev/null 2>&1 || true

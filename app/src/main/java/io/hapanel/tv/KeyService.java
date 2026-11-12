@@ -10,8 +10,7 @@ import java.io.File;
 
 /**
  * Opens (or closes) the panel from one remote button, from any app. Only the key named in config.json
- * ("key") is consumed; every other key passes through untouched. Same pattern as the launcher's
- * InputKeyService. Opt-in: ./ha.sh key-on.
+ * ("key") is consumed; every other key passes through untouched. Opt-in: ./ha.sh key-on.
  *
  * With "log_keys": true in config.json, each key press is logged as "key KEYCODE_X (n)" under the tag
  * HaPanel, so you can find which of your remote's buttons reach apps at all.
